@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volleyball Tournament — 15 teams</title>
+<script type="module">
+  // ===== FIREBASE CONFIG — replace with your own project's config =====
+  // Get this from Firebase console: Project settings > General > Your apps > SDK setup and config
+  window.__FIREBASE_CONFIG__ = {
+    apiKey: "AIzaSyB4NU4ctpdvmOuf8Ce3DIb-ppzko-3gF60",
+    authDomain: "piala-kj-seal-fy2026.firebaseapp.com",
+    databaseURL: "https://piala-kj-seal-fy2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "piala-kj-seal-fy2026",
+    storageBucket: "piala-kj-seal-fy2026.firebasestorage.app",
+    messagingSenderId: "937312878544",
+    appId: "1:937312878544:web:df49923af56ab8eb3283d5"
+  };
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, onValue, set as fbSet } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const app = initializeApp(window.__FIREBASE_CONFIG__);
+  const db = getDatabase(app);
+  window.__fbRef = ref;
+  window.__fbOnValue = onValue;
+  window.__fbSet = fbSet;
+  window.__fbDb = db;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+  :root {
+    --court: #1B4F46;
+    --court-light: #266B5F;
+    --line: #F4EFE3;
+    --sand: #F4EFE3;
+    --sand-dim: #E8E0CC;
+    --ink: #14241F;
+    --ink-soft: #45564F;
+    --ball: #E8A33D;
+    --ball-deep: #B5752A;
+    --win: #2E7D5B;
+    --loss: #B5453B;
+    --pending: #9C9384;
+    --card: #FFFFFF;
+    --border: #D9D2BD;
+    --radius: 10px;
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--sand);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .court-stripe {
+    height: 10px;
+    background: repeating-linear-gradient(90deg, var(--court) 0 40px, var(--court-light) 40px 80px);
+  }
+  header {
+    padding: 2.2rem 1.5rem 1.4rem;
+    text-align: center;
+  }
+  header .eyebrow {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ball-deep);
+    font-weight: 600;
+  }
+  header h1 {
+    font-size: 2.1rem;
+    margin: 0.3rem 0 0.2rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  header p.sub {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  nav.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 1.5rem 1.5rem;
+    flex-wrap: wrap;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  nav.tabs button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--court);
+    background: transparent;
+    color: var(--court);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  nav.tabs button.active {
+    background: var(--court);
+    color: var(--sand);
+  }
+  nav.tabs button:hover:not(.active) {
+    background: rgba(27,79,70,0.08);
+  }
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.4rem;
+    margin-bottom: 2.5rem;
+  }
+  .group-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .group-card .head {
+    background: var(--court);
+    color: var(--sand);
+    padding: 0.7rem 1rem;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .group-card .head .count {
+    font-size: 0.7rem;
+    opacity: 0.75;
+    font-weight: 400;
+  }
+  table.standings {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.83rem;
+  }
+  table.standings th {
+    text-align: center;
+    padding: 0.5rem 0.4rem 0.4rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border);
+  }
+  table.standings th.team-col { text-align: left; padding-left: 0.9rem; }
+  table.standings td {
+    text-align: center;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--sand-dim);
+  }
+  table.standings td.team-col {
+    text-align: left;
+    padding-left: 0.9rem;
+    font-weight: 600;
+  }
+  table.standings tr:last-child td { border-bottom: none; }
+  table.standings tr.qualify td.team-col {
+    color: var(--win);
+  }
+  table.standings tr.qualify td.team-col::before {
+    content: "● ";
+    color: var(--ball);
+    font-size: 0.6rem;
+  }
+  .legend {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: -1.2rem;
+    margin-bottom: 2rem;
+  }
+  .legend .dot { color: var(--ball); }
+
+  .matchday-block { margin-bottom: 1.6rem; }
+  .matchday-block h3 {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .group-section { margin-bottom: 2.4rem; }
+  .group-section > h2 {
+    font-size: 1.3rem;
+    font-weight: 400;
+    margin: 0 0 1rem;
+    color: var(--court);
+  }
+  .match-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.55rem;
+  }
+  .match-row .team-name {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .match-row .team-name.left { text-align: right; }
+  .match-row .team-name.right { text-align: left; }
+  .match-row .team-name.winner { color: var(--win); }
+  .score-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .score-input-group input[type="number"] {
+    width: 44px;
+    text-align: center;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.35rem 0.2rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--sand);
+    color: var(--ink);
+  }
+  .score-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--court);
+    background: #fff;
+  }
+  .score-input-group .vs {
+    color: var(--ink-soft);
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.75rem;
+  }
+  .bye-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--sand-dim);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 0.55rem;
+    margin-bottom: 0.55rem;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  .status-chip {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .status-chip.played { background: rgba(46,125,91,0.12); color: var(--win); }
+  .status-chip.pending { background: rgba(156,147,132,0.15); color: var(--pending); }
+
+  .bracket {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.4rem;
+    align-items: center;
+  }
+  .bracket-col { display: flex; flex-direction: column; gap: 1.2rem; }
+  .bracket-col.col-qf { justify-content: space-around; }
+  .bracket-col.col-sf { justify-content: space-around; }
+  .bracket-col.col-final { justify-content: center; align-items: center; }
+  .bracket-col h4 {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    text-align: center;
+    margin: 0 0 0.2rem;
+  }
+  .ko-match {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  .ko-match .slot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    font-size: 0.83rem;
+  }
+  .ko-match .slot.filled { font-weight: 600; }
+  .ko-match .slot.empty { color: var(--pending); font-style: italic; font-weight: 400; }
+  .ko-match .slot select {
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    font-weight: 600;
+    font-size: 0.83rem;
+    color: var(--court);
+    cursor: pointer;
+  }
+  .ko-match .divider { height: 1px; background: var(--sand-dim); margin: 0.1rem 0; }
+  .ko-label {
+    font-size: 0.65rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 0.3rem;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  .champion-card {
+    background: var(--ball);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    text-align: center;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  .champion-card .label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(20,36,31,0.6);
+    font-weight: 700;
+  }
+  .champion-card .name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 0.2rem;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 2rem;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  .toolbar button {
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .toolbar button:hover { border-color: var(--court); color: var(--court); }
+
+  @media (max-width: 700px) {
+    .bracket { grid-template-columns: 1fr; }
+    .match-row { grid-template-columns: 1fr; text-align: center; gap: 0.4rem; }
+    .match-row .team-name.left, .match-row .team-name.right { text-align: center; }
+    .score-input-group { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="court-stripe"></div>
+
+<header>
+  <div class="eyebrow">15-team draw · knockout finish</div>
+  <h1>Volleyball tournament tracker</h1>
+  <p class="sub" id="header-sub">Live results — standings and the knockout bracket update automatically.</p>
+  <div id="admin-bar" style="margin-top:0.8rem; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;">
+    <span id="admin-status" style="font-size:0.78rem; color:var(--ink-soft);">Viewing only</span>
+    <button id="admin-login-btn" style="margin-left:0.5rem; font-family:inherit; font-size:0.75rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--court); cursor:pointer;">Editor login</button>
+    <button id="admin-logout-btn" style="display:none; margin-left:0.5rem; font-family:inherit; font-size:0.75rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--loss); cursor:pointer;">Log out</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-view="standings">Standings</button>
+  <button data-view="fixtures">Fixtures &amp; results</button>
+  <button data-view="knockout">Knockout bracket</button>
+</nav>
+
+<main>
+
+  <div class="view active" id="view-standings">
+    <div class="group-grid" id="standings-grid"></div>
+    <div class="legend"><span class="dot">●</span> qualifies for the knockout stage (top 2 per group)</div>
+  </div>
+
+  <div class="view" id="view-fixtures">
+    <div id="fixtures-container"></div>
+    <div id="reset-toolbar" class="toolbar" style="display:none;">
+      <button id="reset-btn">Reset all results</button>
+    </div>
+  </div>
+
+  <div class="view" id="view-knockout">
+    <div id="knockout-container"></div>
+  </div>
+
+</main>
+
+<script>
+const ADMIN_PASSWORD = "pialasealkj2026"; // change this to your own password
+const FIREBASE_PATH = "tournament_state";
+let isAdmin = sessionStorage.getItem('volleyball_is_admin') === 'true';
+let fbInitialized = false;
+
+const groups = {
+  A: [1,2,3,4],
+  B: [5,6,7,8],
+  C: [9,10,11,12],
+  D: [13,14,15]
+};
+
+function teamName(id) { return 'Team ' + id; }
+
+function buildFixtures() {
+  const fixtures = [];
+  function roundRobin(groupKey, teamIds) {
+    const n = teamIds.length;
+    if (n === 4) {
+      const md = [[[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]]];
+      md.forEach((pairs, i) => {
+        pairs.forEach(([a,b]) => {
+          fixtures.push({ id: `${groupKey}-md${i+1}-${teamIds[a]}-${teamIds[b]}`, group: groupKey, matchday: i+1, teamA: teamIds[a], teamB: teamIds[b], setsA: null, setsB: null });
+        });
+      });
+    } else if (n === 3) {
+      const rounds = [
+        { pair: [0,1], byeIdx: 2 },
+        { pair: [0,2], byeIdx: 1 },
+        { pair: [1,2], byeIdx: 0 }
+      ];
+      rounds.forEach((r, i) => {
+        fixtures.push({ id: `${groupKey}-md${i+1}-${teamIds[r.pair[0]]}-${teamIds[r.pair[1]]}`, group: groupKey, matchday: i+1, teamA: teamIds[r.pair[0]], teamB: teamIds[r.pair[1]], setsA: null, setsB: null, byeTeam: teamIds[r.byeIdx] });
+      });
+    }
+  }
+  Object.entries(groups).forEach(([key, ids]) => roundRobin(key, ids));
+  return fixtures;
+}
+
+let fixtures = buildFixtures();
+
+function loadState() {
+  // no-op locally; Firebase listener (setupFirebaseSync) drives state now
+}
+
+let suppressNextWrite = false;
+
+function saveState() {
+  if (!window.__fbDb) return;
+  suppressNextWrite = true;
+  const payload = { fixtures: fixtures.map(f => ({ id: f.id, setsA: f.setsA, setsB: f.setsB })), koOverrides };
+  window.__fbSet(window.__fbRef(window.__fbDb, FIREBASE_PATH), payload).catch(err => {
+    console.error('Firebase write failed:', err);
+    alert('Could not save — check your internet connection or Firebase config.');
+  });
+}
+
+function applyRemoteState(saved) {
+  if (!saved) return;
+  if (Array.isArray(saved.fixtures)) {
+    fixtures.forEach(f => {
+      const match = saved.fixtures.find(s => s.id === f.id);
+      if (match) { f.setsA = match.setsA; f.setsB = match.setsB; }
+      else { f.setsA = null; f.setsB = null; }
+    });
+  }
+  koOverrides = saved.koOverrides || {};
+  renderStandings();
+  renderFixtures();
+  renderKnockout();
+}
+
+function setupFirebaseSync() {
+  if (!window.__fbDb || fbInitialized) return;
+  fbInitialized = true;
+  const stateRef = window.__fbRef(window.__fbDb, FIREBASE_PATH);
+  window.__fbOnValue(stateRef, (snapshot) => {
+    if (suppressNextWrite) { suppressNextWrite = false; return; }
+    applyRemoteState(snapshot.val());
+  });
+}
+
+function computeStandings(groupKey) {
+  const ids = groups[groupKey];
+  const table = {};
+  ids.forEach(id => { table[id] = { id, played: 0, wins: 0, losses: 0, setsFor: 0, setsAgainst: 0 }; });
+
+  fixtures.filter(f => f.group === groupKey).forEach(f => {
+    if (f.setsA === null || f.setsB === null || f.setsA === '' || f.setsB === '') return;
+    const a = table[f.teamA], b = table[f.teamB];
+    const sa = Number(f.setsA), sb = Number(f.setsB);
+    a.played++; b.played++;
+    a.setsFor += sa; a.setsAgainst += sb;
+    b.setsFor += sb; b.setsAgainst += sa;
+    if (sa > sb) { a.wins++; b.losses++; }
+    else if (sb > sa) { b.wins++; a.losses++; }
+  });
+
+  const rows = Object.values(table).map(r => ({
+    ...r,
+    points: r.wins * 2 + r.losses * 1 * 0,
+    setRatio: r.setsAgainst === 0 ? (r.setsFor > 0 ? Infinity : 0) : r.setsFor / r.setsAgainst
+  }));
+
+  rows.sort((x, y) => {
+    if (y.wins !== x.wins) return y.wins - x.wins;
+    const xr = x.setRatio === Infinity ? 999 : x.setRatio;
+    const yr = y.setRatio === Infinity ? 999 : y.setRatio;
+    if (yr !== xr) return yr - xr;
+    return (y.setsFor - y.setsAgainst) - (x.setsFor - x.setsAgainst);
+  });
+
+  return rows;
+}
+
+function renderStandings() {
+  const grid = document.getElementById('standings-grid');
+  grid.innerHTML = '';
+  Object.keys(groups).forEach(key => {
+    const rows = computeStandings(key);
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    const totalMatches = fixtures.filter(f => f.group === key).length;
+    const playedMatches = fixtures.filter(f => f.group === key && f.setsA !== null && f.setsA !== '').length;
+    card.innerHTML = `
+      <div class="head"><span>Group ${key}</span><span class="count">${playedMatches}/${totalMatches} played</span></div>
+      <table class="standings">
+        <thead><tr>
+          <th class="team-col">Team</th><th>P</th><th>W</th><th>L</th><th>Sets</th><th>Ratio</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+            <tr class="${i < 2 ? 'qualify' : ''}">
+              <td class="team-col">${teamName(r.id)}</td>
+              <td>${r.played}</td>
+              <td>${r.wins}</td>
+              <td>${r.losses}</td>
+              <td>${r.setsFor}-${r.setsAgainst}</td>
+              <td>${r.setRatio === Infinity ? '—' : r.setRatio.toFixed(2)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderFixtures() {
+  const container = document.getElementById('fixtures-container');
+  container.innerHTML = '';
+  Object.keys(groups).forEach(key => {
+    const section = document.createElement('div');
+    section.className = 'group-section';
+    const groupFixtures = fixtures.filter(f => f.group === key);
+    const matchdays = [...new Set(groupFixtures.map(f => f.matchday))].sort();
+
+    let html = `<h2>Group ${key}</h2>`;
+    matchdays.forEach(md => {
+      html += `<div class="matchday-block"><h3>Matchday ${md}</h3>`;
+      const dayFixtures = groupFixtures.filter(f => f.matchday === md);
+      dayFixtures.forEach(f => {
+        const played = f.setsA !== null && f.setsA !== '' && f.setsB !== null && f.setsB !== '';
+        const aWins = played && Number(f.setsA) > Number(f.setsB);
+        const bWins = played && Number(f.setsB) > Number(f.setsA);
+        html += `
+          <div class="match-row">
+            <div class="team-name left ${aWins ? 'winner' : ''}">${teamName(f.teamA)}</div>
+            ${isAdmin ? `
+            <div class="score-input-group">
+              <input type="number" min="0" max="5" inputmode="numeric" data-fixture="${f.id}" data-side="A" value="${f.setsA ?? ''}" placeholder="0">
+              <span class="vs">sets</span>
+              <input type="number" min="0" max="5" inputmode="numeric" data-fixture="${f.id}" data-side="B" value="${f.setsB ?? ''}" placeholder="0">
+            </div>` : `
+            <div class="score-input-group" style="font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; font-weight:600; font-size:0.95rem;">
+              <span>${f.setsA ?? '–'}</span><span class="vs">sets</span><span>${f.setsB ?? '–'}</span>
+            </div>`}
+            <div class="team-name right ${bWins ? 'winner' : ''}">${teamName(f.teamB)}</div>
+            <span class="status-chip ${played ? 'played' : 'pending'}">${played ? 'Played' : 'Pending'}</span>
+          </div>`;
+        if (f.byeTeam) {
+          html += `<div class="bye-row">${teamName(f.byeTeam)} — bye this round</div>`;
+        }
+      });
+      html += `</div>`;
+    });
+    section.innerHTML = html;
+    container.appendChild(section);
+  });
+
+  if (!isAdmin) return;
+  container.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const fid = e.target.dataset.fixture;
+      const side = e.target.dataset.side;
+      const f = fixtures.find(x => x.id === fid);
+      if (!f) return;
+      const val = e.target.value === '' ? '' : Math.max(0, Math.min(5, Number(e.target.value)));
+      if (side === 'A') f.setsA = val; else f.setsB = val;
+      saveState();
+      renderStandings();
+      renderFixtures();
+      renderKnockout();
+    });
+  });
+}
+
+function getQualifiers(groupKey) {
+  return computeStandings(groupKey).slice(0, 2).map(r => r.id);
+}
+
+let koOverrides = {};
+
+function getQfTeams() {
+  const a = getQualifiers('A'), b = getQualifiers('B'), c = getQualifiers('C'), d = getQualifiers('D');
+  return {
+    qf1: [a[0] ?? null, d[1] ?? null],
+    qf2: [c[0] ?? null, b[1] ?? null],
+    qf3: [b[0] ?? null, c[1] ?? null],
+    qf4: [d[0] ?? null, a[1] ?? null]
+  };
+}
+
+function koWinner(matchKey, teamPair) {
+  if (!teamPair[0] || !teamPair[1]) return null;
+  const key = `${matchKey}-${teamPair[0]}-${teamPair[1]}`;
+  if (koOverrides[key]) return koOverrides[key];
+  return null;
+}
+
+function renderKnockout() {
+  const container = document.getElementById('knockout-container');
+  const qf = getQfTeams();
+
+  const qf1Winner = koWinner('qf1', qf.qf1);
+  const qf2Winner = koWinner('qf2', qf.qf2);
+  const qf3Winner = koWinner('qf3', qf.qf3);
+  const qf4Winner = koWinner('qf4', qf.qf4);
+
+  const sf1Teams = [qf1Winner, qf2Winner];
+  const sf2Teams = [qf3Winner, qf4Winner];
+
+  const sf1Winner = koWinner('sf1', sf1Teams);
+  const sf2Winner = koWinner('sf2', sf2Teams);
+
+  const finalTeams = [sf1Winner, sf2Winner];
+  const champion = koWinner('final', finalTeams);
+
+  function matchHtml(matchKey, teamPair, label) {
+    const slotHtml = (idx) => {
+      const teamId = teamPair[idx];
+      if (!teamId) return `<div class="slot empty">TBD</div>`;
+      const winner = koWinner(matchKey, teamPair);
+      const isWinner = winner === teamId;
+      return `<div class="slot filled" style="${isWinner ? 'color: var(--win)' : ''}">${teamName(teamId)}</div>`;
+    };
+    let selector = '';
+    if (teamPair[0] && teamPair[1]) {
+      const current = koWinner(matchKey, teamPair) || '';
+      if (isAdmin) {
+        selector = `
+          <div class="divider"></div>
+          <div class="slot">
+            <span style="font-size:0.7rem; color:var(--ink-soft)">Winner</span>
+            <select data-match="${matchKey}" data-a="${teamPair[0]}" data-b="${teamPair[1]}">
+              <option value="">— select —</option>
+              <option value="${teamPair[0]}" ${current == teamPair[0] ? 'selected' : ''}>${teamName(teamPair[0])}</option>
+              <option value="${teamPair[1]}" ${current == teamPair[1] ? 'selected' : ''}>${teamName(teamPair[1])}</option>
+            </select>
+          </div>`;
+      } else if (current) {
+        selector = `
+          <div class="divider"></div>
+          <div class="slot"><span style="font-size:0.7rem; color:var(--ink-soft)">Winner</span><span style="font-weight:600; color:var(--win)">${teamName(current)}</span></div>`;
+      }
+    }
+    return `
+      <div class="ko-label">${label}</div>
+      <div class="ko-match">
+        ${slotHtml(0)}
+        ${slotHtml(1)}
+        ${selector}
+      </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="bracket">
+      <div class="bracket-col col-qf">
+        ${matchHtml('qf1', qf.qf1, 'QF1 · A1 vs D2')}
+        ${matchHtml('qf2', qf.qf2, 'QF2 · C1 vs B2')}
+        ${matchHtml('qf3', qf.qf3, 'QF3 · B1 vs C2')}
+        ${matchHtml('qf4', qf.qf4, 'QF4 · D1 vs A2')}
+      </div>
+      <div class="bracket-col col-sf">
+        ${matchHtml('sf1', sf1Teams, 'Semifinal 1')}
+        ${matchHtml('sf2', sf2Teams, 'Semifinal 2')}
+      </div>
+      <div class="bracket-col col-final">
+        ${matchHtml('final', finalTeams, 'Final')}
+        ${champion ? `<div class="champion-card"><div class="label">Champion</div><div class="name">${teamName(champion)}</div></div>` : ''}
+      </div>
+    </div>
+  `;
+
+  if (!isAdmin) return;
+  container.querySelectorAll('select[data-match]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const matchKey = e.target.dataset.match;
+      const a = Number(e.target.dataset.a);
+      const b = Number(e.target.dataset.b);
+      const key = `${matchKey}-${a}-${b}`;
+      if (e.target.value === '') {
+        delete koOverrides[key];
+      } else {
+        koOverrides[key] = Number(e.target.value);
+      }
+      saveState();
+      renderKnockout();
+    });
+  });
+}
+
+function switchView(viewName) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + viewName).classList.add('active');
+  document.querySelector(`nav.tabs button[data-view="${viewName}"]`).classList.add('active');
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+function updateAdminUI() {
+  const status = document.getElementById('admin-status');
+  const loginBtn = document.getElementById('admin-login-btn');
+  const logoutBtn = document.getElementById('admin-logout-btn');
+  const resetToolbar = document.getElementById('reset-toolbar');
+  const sub = document.getElementById('header-sub');
+  if (isAdmin) {
+    status.textContent = 'Editing as tournament organizer';
+    status.style.color = 'var(--win)';
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-block';
+    resetToolbar.style.display = 'flex';
+    sub.textContent = 'Enter set scores below — standings and the bracket update for everyone instantly.';
+  } else {
+    status.textContent = 'Viewing only';
+    status.style.color = 'var(--ink-soft)';
+    loginBtn.style.display = 'inline-block';
+    logoutBtn.style.display = 'none';
+    resetToolbar.style.display = 'none';
+    sub.textContent = 'Live results — standings and the knockout bracket update automatically.';
+  }
+}
+
+document.getElementById('admin-login-btn').addEventListener('click', () => {
+  const pw = prompt('Enter editor password:');
+  if (pw === null) return;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    sessionStorage.setItem('volleyball_is_admin', 'true');
+    updateAdminUI();
+    renderStandings(); renderFixtures(); renderKnockout();
+  } else {
+    alert('Incorrect password.');
+  }
+});
+
+document.getElementById('admin-logout-btn').addEventListener('click', () => {
+  isAdmin = false;
+  sessionStorage.removeItem('volleyball_is_admin');
+  updateAdminUI();
+  renderStandings(); renderFixtures(); renderKnockout();
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (!isAdmin) return;
+  if (!confirm('Reset all match results and bracket selections for everyone? This cannot be undone.')) return;
+  fixtures.forEach(f => { f.setsA = null; f.setsB = null; });
+  koOverrides = {};
+  saveState();
+});
+
+updateAdminUI();
+renderStandings();
+renderFixtures();
+renderKnockout();
+
+if (window.__fbDb) {
+  setupFirebaseSync();
+} else {
+  window.addEventListener('firebase-ready', setupFirebaseSync);
+}
+</script>
+
+</body>
+</html>
